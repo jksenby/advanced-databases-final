@@ -1,10 +1,15 @@
 <mat-form-field class="search-bar">
-    <mat-label>Search Products</mat-label>
-    <input matInput [formControl]="searchControl" (ngModelChange)="getProducts()" placeholder="e.g. Laptop">
-    <mat-icon matSuffix>search</mat-icon>
+  <mat-label>Search Products</mat-label>
+  <input
+    matInput
+    [formControl]="searchControl"
+    (ngModelChange)="getProducts()"
+    placeholder="e.g. Laptop"
+  />
+  <mat-icon matSuffix>search</mat-icon>
 </mat-form-field>
 
-<div *ngIf="products.length; else noProducts" class="products" >
+<div *ngIf="products.length; else noProducts" class="products">
   <mat-card *ngFor="let product of products" (click)="onView(product._id)">
     <mat-card-header>
       <mat-card-title>{{ product?.name }}</mat-card-title>
@@ -26,7 +31,13 @@
 <ng-template #noProducts>
   <p>No Products found</p>
 </ng-template>
-<form *ngIf="isAdmin" #adminForm class="admin-form" [formGroup]="productForm" (ngSubmit)="onSubmit()">
+<form
+  *ngIf="isAdmin"
+  #adminForm
+  class="admin-form"
+  [formGroup]="productForm"
+  (ngSubmit)="onSubmit()"
+>
   <div class="form-group">
     <label for="name">Name</label>
     <input
@@ -85,26 +96,33 @@
   </div>
 </form>
 
-<div *ngIf="recommendations.length; else noRecommendations" class="products" >
-    <h1>Recommendations</h1>
-    <mat-card *ngFor="let recommendation of recommendations" (click)="onView(recommendation._id)">
-      <mat-card-header>
-        <mat-card-title>{{ recommendation?.name }}</mat-card-title>
-        <mat-card-subtitle>{{ recommendation?.category }}</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <p>{{ recommendation?.description }}</p>
-      </mat-card-content>
-      <mat-card-actions>
-        <button mat-raised-button color="warn" (click)="onLike(recommendation._id)">
-          <mat-icon>favorite</mat-icon>LIKE
-        </button>
-        <button mat-raised-button (click)="onPurchase(recommendation._id)">
-          <mat-icon>add_shopping_cart</mat-icon> BUY {{recommendation?.price}}₸
-        </button>
-      </mat-card-actions>
-    </mat-card>
-  </div>
-  <ng-template #noRecommendations>
-    <p>No Products found</p>
-  </ng-template>
+<h1>Recommendations</h1>
+<div *ngIf="recommendations.length; else noRecommendations" class="products">
+  <mat-card
+    *ngFor="let recommendation of recommendations"
+    (click)="onView(recommendation._id)"
+  >
+    <mat-card-header>
+      <mat-card-title>{{ recommendation?.name }}</mat-card-title>
+      <mat-card-subtitle>{{ recommendation?.category }}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <p>{{ recommendation?.description }}</p>
+    </mat-card-content>
+    <mat-card-actions>
+      <button
+        mat-raised-button
+        color="warn"
+        (click)="onLike(recommendation._id)"
+      >
+        <mat-icon>favorite</mat-icon>LIKE
+      </button>
+      <button mat-raised-button (click)="onPurchase(recommendation._id)">
+        <mat-icon>add_shopping_cart</mat-icon> BUY {{recommendation?.price}}₸
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>
+<ng-template #noRecommendations>
+  <p>No Products found</p>
+</ng-template>

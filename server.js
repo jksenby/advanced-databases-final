@@ -57,6 +57,8 @@ const userSchema = mongoose.Schema({
   pfp: String,
   phone: String,
   isAdmin: Boolean,
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
 });
 
 const mainPageSchema = mongoose.Schema({
@@ -514,15 +516,15 @@ app.get("/interactions/history", authMiddleware, async (req, res) => {
 });
 
 app.post("/sendEmail", async (req, res) => {
-  const { user, pass, to, subject, text, filename, content, service } =
+  const { to, subject, text, filename, content, service } =
     req.body;
   const transporter = nodemailer.createTransport({
     host: "smtp" + service,
     secure: false,
     port: 587,
     auth: {
-      user,
-      pass,
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
     tls: {
       rejectUnauthorized: false,
@@ -530,7 +532,7 @@ app.post("/sendEmail", async (req, res) => {
   });
 
   const mailOptions = {
-    from: user,
+    from: process.env.EMAIL_USER,
     to,
     attachments: filename
       ? [
@@ -553,6 +555,92 @@ app.post("/sendEmail", async (req, res) => {
       res.status(200).send({ message: info.response });
     }
   });
+});
+
+app.post("/forgot-password", async (req, res) => {
+  const { email, user, pass } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res
+        .status(200)
+        .json({ message: "If an account with that email exists, a reset link has been sent." });
+    }
+
+    const token = crypto.randomBytes(20).toString("hex");
+
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000;
+
+    await user.save();
+
+    const transporter = nodemailer.createTransport({
+      service: "Gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const resetUrl = `http://localhost/reset-password/${token}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: "Password Reset Request",
+      text: `You are receiving this email because you (or someone else) have requested the reset of the password for your account.\n\n
+             Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it:\n\n
+             ${resetUrl}\n\n
+             If you did not request this, please ignore this email and your password will remain unchanged.\n`,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error sending password reset email:", error);
+        return res.status(500).json({ message: "Error sending email." });
+      }
+      res
+        .status(200)
+        .json({ message: "If an account with that email exists, a reset link has been sent." });
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Server error." });
+  }
+});
+
+app.post("/reset-password", async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ message: "Token and password are required." });
+  }
+
+  try {
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Password reset token is invalid or has expired." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: "Password has been reset successfully." });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Server error." });
+  }
 });
 
 app.get("/main-page", async (req, res) => {

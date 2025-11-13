@@ -59,6 +59,8 @@ import { MoviesService } from "src/app/services/movies.service";
 import { provideNativeDateAdapter } from "@angular/material/core";
 import { MAT_DIALOG_DEFAULT_OPTIONS } from "@angular/material/dialog";
 import { ProductsComponent } from "./components/products/products";
+import { ForgotPasswordComponent } from "./components/forgot-password/forgot-password.component";
+import { ResetPasswordComponent } from "./components/reset-password/reset-password.component";
 import { ProductsService } from "./services/products.service";
 import { TokenInterceptor } from "./services/token.interceptor";
 import { Observable, tap } from "rxjs";
@@ -97,6 +99,8 @@ export function appInitializer(
     MoviesComponent,
     ItemDialogComponent,
     ProductsComponent,
+    ForgotPasswordComponent,
+    ResetPasswordComponent
   ],
   bootstrap: [AppComponent],
   imports: [

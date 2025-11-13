@@ -128,8 +128,6 @@ export class TodolistComponent implements OnInit, AfterViewInit {
           this.getTasks();
           this.emailService
             .sendEmail({
-              user: "zhalgas.karsenbai@gmail.com",
-              pass: "hbqd buof bqjo owft",
               to: user[0].email,
               subject: "You have new task. Priority: " + task.priority,
               text: `${task.name + ""}\n${task.description + ""}`,

@@ -29,6 +29,10 @@ export class UserService {
     withCredentials: true,
   };
 
+  private publicHttpOptions = {
+    headers: new HttpHeaders({ "Content-Type": "application/json" }),
+  };
+
   public get currentUserValue(): User | null {
     return this.currentUserSubject.value;
   }
@@ -108,6 +112,22 @@ export class UserService {
     return this.http.delete(
       `${this.apiUrl}/tasks/${id}`,
       this.getOptions
+    );
+  }
+
+  forgotPassword(email: string): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/forgot-password`,
+      { email },
+      this.publicHttpOptions
+    );
+  }
+
+  resetPassword(token: string, password: string): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/reset-password`,
+      { token, password },
+      this.publicHttpOptions
     );
   }
 }

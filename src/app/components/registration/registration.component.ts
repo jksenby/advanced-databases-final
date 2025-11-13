@@ -61,8 +61,6 @@ export class RegistrationComponent implements OnInit {
             } else {
               this.emailService
                 .sendEmail({
-                  user: "zhalgas.karsenbai@gmail.com",
-                  pass: "hbqd buof bqjo owft",
                   to: this.f.email.value,
                   subject:
                     "Congratulations! You have registered to our web site",

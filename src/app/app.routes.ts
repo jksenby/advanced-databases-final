@@ -11,7 +11,9 @@ import { HomeComponent } from "./components/home/home.component";
 import { MusicComponent } from "./components/music/music.component";
 import { GamesComponent } from "./components/games/games.component";
 import { MoviesComponent } from "./components/movies/movies.component";
-import { ProductsComponent } from './components/products/products'
+import { ProductsComponent } from "./components/products/products";
+import { ResetPasswordComponent } from './components/reset-password/reset-password.component'
+import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component'
 
 export const appRoutes: Routes = [
   { path: "todolist", component: TodolistComponent },
@@ -32,5 +34,7 @@ export const appRoutes: Routes = [
   { path: "games", component: GamesComponent },
   { path: "movies", component: MoviesComponent },
   { path: "products", component: ProductsComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password/:token', component: ResetPasswordComponent },
   { path: "**", component: FlightsComponent },
 ];
