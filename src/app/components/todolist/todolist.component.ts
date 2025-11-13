@@ -1,7 +1,7 @@
 import { Component, OnInit, AfterViewInit, ViewChild } from "@angular/core";
 import ITask from "../../../shared/models/task.model";
 import { TaskService } from "src/app/services/task.service";
-import { Priority } from "src/shared/enums/priority";
+import { Priority } from "src/shared/enums/priority.enum";
 import { FormControl, Validators, FormGroup } from "@angular/forms";
 
 import { MatTableDataSource } from "@angular/material/table";
@@ -72,9 +72,9 @@ export class TodolistComponent implements OnInit, AfterViewInit {
   }
 
   getTasks() {
-    this.userService.getTempUser().subscribe((user) => {
+    this.userService.currentUser$.subscribe((user) => {
       this.taskService
-        .getTasks(this.priorityTask, this.isReady, user[0].userId)
+        .getTasks(this.priorityTask, this.isReady, user.id)
         .subscribe({
           next: (task: ITask[]) => {
             this.task = task;
@@ -111,14 +111,14 @@ export class TodolistComponent implements OnInit, AfterViewInit {
 
   createTask() {
     if (this.createFormGroup.invalid) return;
-    this.userService.getTempUser().subscribe((user) => {
+    this.userService.currentUser$.subscribe((user) => {
       const task = {
         name: this.createFormGroup.controls.nameFormControl.value,
         created: new Date(),
         readiness: false,
         description: this.createFormGroup.controls.descriptionFormControl.value,
         priority: this.createFormGroup.controls.priorityFormControl.value,
-        userId: user[0].userId,
+        userId: user.id,
       };
       return this.taskService.createTask(task).subscribe({
         next: () => {

@@ -7,6 +7,9 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const redisClient = require("./redis");
 const port = 3000;
+const jwt = require("jsonwebtoken");
+const authMiddleware = require("./authMiddleware");
+require("dotenv").config();
 
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -36,14 +39,6 @@ const userSchema = mongoose.Schema({
   isAdmin: Boolean,
 });
 
-const tempUserSchema = mongoose.Schema({
-  username: String,
-  loggedIn: Boolean,
-  isAdmin: Boolean,
-  userId: mongoose.Schema.Types.ObjectId,
-  email: String,
-});
-
 const mainPageSchema = mongoose.Schema({
   image: String,
   name: String,
@@ -53,10 +48,43 @@ const mainPageSchema = mongoose.Schema({
   created: Date,
 });
 
+const productSchema = mongoose.Schema({
+  name: String,
+  description: String,
+  category: String,
+  price: Number,
+});
+
+const interactionSchema = mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "users",
+    required: true,
+    index: true,
+  },
+  productId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "products",
+    required: true,
+    index: true,
+  },
+  interactionType: {
+    type: String,
+    enum: ["view", "like", "purchase"],
+    required: true,
+  },
+  timestamp: { type: Date, default: Date.now },
+});
+
 const Task = new mongoose.model("tasks", taskSchema, "tasks");
 const User = new mongoose.model("users", userSchema, "users");
-const tempUser = new mongoose.model("tempUser", tempUserSchema, "tempUser");
 const MainPage = new mongoose.model("main-page", mainPageSchema, "main-page");
+const Product = new mongoose.model("products", productSchema, "products");
+const Interaction = new mongoose.model(
+  "interactions",
+  interactionSchema,
+  "interactions"
+);
 
 try {
   mongoose.connect(url);
@@ -65,6 +93,12 @@ try {
 }
 
 app.use(express.json());
+app.use("/tasks", authMiddleware);
+app.use("/products", authMiddleware);
+app.use("/recommendations", authMiddleware);
+app.use("/interactions", authMiddleware);
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 app.get("/tasks", async (req, res) => {
   try {
@@ -100,7 +134,7 @@ app.get("/tasks", async (req, res) => {
     if (cached) return res.status(200).json(JSON.parse(cached));
     const result = await Task.find(field).lean();
 
-    await redisClient.setEx(cacheKey, 60, JSON.stringify(result))
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(result));
 
     return res.status(201).json(result);
   } catch (e) {
@@ -110,15 +144,14 @@ app.get("/tasks", async (req, res) => {
 
 app.get("/tasks/:id", async (req, res) => {
   try {
-
     const cacheKey = `tasks:${req.params.id}`;
     const cached = await redisClient.get(cacheKey);
 
-    if(cached) return res.status(200).json(JSON.parse(cached));
+    if (cached) return res.status(200).json(JSON.parse(cached));
 
     const result = await Task.find({ _id: req.params.id });
 
-    await redisClient.setEx(cacheKey, 60, JSON.stringify(result))
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(result));
 
     res.status(201).json(result);
   } catch (e) {
@@ -167,11 +200,11 @@ app.get("/users", async (req, res) => {
     const cacheKey = `users`;
     const cached = await redisClient.get(cacheKey);
 
-    if(cached) return res.status(200).json(JSON.parse(cached));
+    if (cached) return res.status(200).json(JSON.parse(cached));
 
     const result = await Task.find();
 
-    await redisClient.setEx(cacheKey, 60, JSON.stringify(result))
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(result));
     return res.status(201).json(result);
   } catch (e) {
     return res.status(400).json({ message: "Error" });
@@ -183,10 +216,10 @@ app.get("/users/:username", async (req, res) => {
     const cacheKey = `users:${req.params.username}`;
     const cached = await redisClient.get(cacheKey);
 
-    if(cached) return res.status(200).json(JSON.parse(cached));
+    if (cached) return res.status(200).json(JSON.parse(cached));
 
     const result = await User.find({ username: req.params.username });
-    await redisClient.setEx(cacheKey, 60, JSON.stringify(result))
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(result));
     return res.status(201).json(result);
   } catch (e) {
     return res.status(400).json({ message: "Error" });
@@ -254,59 +287,201 @@ app.delete("/users/:id", async (req, res) => {
   }
 });
 
-app.get("/tempUser", async (req, res) => {
+app.post("/login", async (req, res) => {
   try {
-    const result = await tempUser.find({ _id: "65d60450684da12832039223" });
-    return res.status(201).json(result);
-  } catch (e) {
-    return res.status(400).json({ message: "Error" });
-  }
-});
+    const { username, password } = req.body;
+    const user = await User.findOne({ username: username });
 
-app.put("/tempUser/:id", async (req, res) => {
-  try {
-    const user = await User.find({
-      username: req.body.username,
-    });
-    if (
-      user.length === 1 &&
-      (await bcrypt.compare(req.body.password, user[0].password))
-    ) {
-      const result = await tempUser.findByIdAndUpdate(
-        req.params.id,
-        {
-          username: req.body.username,
-          loggedIn: true,
-          isAdmin: user[0].isAdmin,
-          userId: user[0]._id,
-          email: user[0].email,
-        },
-        { new: true }
-      );
-      res.status(201).json({ message: "You successfully signed in", result });
-    } else {
-      res.status(401).json({ message: "The username or password is wrong" });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid username or password" });
     }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
+
+    const payload = {
+      user: {
+        id: user._id.toString(),
+        username: user.username,
+        isAdmin: user.isAdmin,
+      },
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "3h" });
+    res.status(200).json({
+      token,
+      userId: user._id.toString(),
+      username: user.username,
+      isAdmin: user.isAdmin,
+    });
   } catch (e) {
     res.status(400).json({ message: "Something went wrong" });
   }
 });
 
-app.put("/logoutTempUser/:id", async (req, res) => {
+app.get("/me", authMiddleware, async (req, res) => {
   try {
-    const result = await tempUser.findOneAndUpdate(
-      { _id: new mongoose.Types.ObjectId(req.params.id) },
-      {
-        username: "",
-        loggedIn: false,
-        isAdmin: req.body.isAdmin,
-        userId: new mongoose.Types.ObjectId(),
-      },
-      { new: true }
-    );
-    res.status(201).json({ message: "You successfully log out", result });
+    console.log(req.user);
+    const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
   } catch (e) {
-    res.status(400).json({ message: "Something went wrong" });
+    console.error(e);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.post("/interactions", authMiddleware, async (req, res) => {
+  const { productId, interactionType } = req.body;
+
+  if (!productId || !interactionType) {
+    return res
+      .status(400)
+      .json({ message: "productId and interactionType are required." });
+  }
+
+  if (!["view", "like", "purchase"].includes(interactionType)) {
+    return res.status(400).json({ message: "Invalid interactionType." });
+  }
+
+  try {
+    const userId = req.user.id;
+
+    if (interactionType === "like") {
+      const existingLike = await Interaction.findOne({
+        userId,
+        productId,
+        interactionType: "like",
+      });
+      if (existingLike) {
+        return res
+          .status(200)
+          .json({ message: "User already liked this product." });
+      }
+    }
+
+    const newInteraction = new Interaction({
+      userId,
+      productId,
+      interactionType,
+    });
+
+    await newInteraction.save();
+    res.status(201).json(newInteraction);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Server error logging interaction" });
+  }
+});
+
+app.get("/recommendations", async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    const allUserInteractedProductIds = (
+      await Interaction.find({ userId: userId }).select("productId")
+    ).map((i) => i.productId);
+
+    const userPositiveProductIds = (
+      await Interaction.find({
+        userId: userId,
+        interactionType: { $in: ["like", "purchase"] },
+      }).select("productId")
+    ).map((i) => i.productId);
+
+    let recommendations = [];
+
+    if (userPositiveProductIds.length > 0) {
+      const similarUsers = await Interaction.find({
+        productId: { $in: userPositiveProductIds },
+        userId: { $ne: userId },
+        interactionType: { $in: ["like", "purchase"] },
+      }).distinct("userId");
+
+      if (similarUsers.length > 0) {
+        recommendations = await Interaction.aggregate([
+          {
+            $match: {
+              userId: { $in: similarUsers },
+              interactionType: { $in: ["like", "purchase"] },
+              productId: { $nin: allUserInteractedProductIds },
+            },
+          },
+          {
+            $group: {
+              _id: "$productId",
+              score: { $sum: 1 },
+            },
+          },
+          { $sort: { score: -1 } },
+          { $limit: 10 },
+          {
+            $lookup: {
+              from: "products",
+              localField: "_id",
+              foreignField: "_id",
+              as: "productDetails",
+            },
+          },
+          { $unwind: "$productDetails" },
+          { $replaceRoot: { newRoot: "$productDetails" } },
+        ]);
+      }
+    }
+
+    if (recommendations.length === 0) {
+      recommendations = await Interaction.aggregate([
+        {
+          $match: {
+            interactionType: { $in: ["purchase", "like"] },
+            productId: { $nin: allUserInteractedProductIds },
+          },
+        },
+        {
+          $group: {
+            _id: "$productId",
+            score: { $sum: 1 },
+          },
+        },
+        { $sort: { score: -1 } },
+        { $limit: 10 },
+        {
+          $lookup: {
+            from: "products",
+            localField: "_id",
+            foreignField: "_id",
+            as: "productDetails",
+          },
+        },
+        { $unwind: "$productDetails" },
+        { $replaceRoot: { newRoot: "$productDetails" } },
+      ]);
+    }
+
+    res.status(200).json(recommendations);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Server error fetching recommendations" });
+  }
+});
+
+app.get("/interactions/history", authMiddleware, async (req, res) => {
+  try {
+    const history = await Interaction.find({ userId: req.user.id })
+      .sort({ timestamp: -1 })
+      .populate("productId");
+
+    res.status(200).json(history);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Server error fetching history" });
   }
 });
 
@@ -358,8 +533,8 @@ app.get("/main-page", async (req, res) => {
     const cacheKey = `main-page`;
     const cached = await redisClient.get(cacheKey);
 
-    if(cached) return res.status(200).json(JSON.parse(cached));
-    
+    if (cached) return res.status(200).json(JSON.parse(cached));
+
     const result = await MainPage.find();
 
     await redisClient.setEx(cacheKey, 60, result);
@@ -395,6 +570,89 @@ app.put("/main-page/:id", async (req, res) => {
       new: true,
     });
     res.status(201).json(home);
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
+
+app.get("/products", async (req, res) => {
+  try {
+    let field = {};
+    const { search } = req.query;
+
+    if (search) {
+      field = {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { category: { $regex: search, $options: "i" } },
+          { description: { $regex: search, $options: "i" } },
+        ],
+      };
+    }
+
+    const cacheKey = `products:${JSON.stringify(field)}`;
+
+    const cached = await redisClient.get(cacheKey);
+
+    if (cached) return res.status(200).json(JSON.parse(cached));
+    const result = await Product.find(field).lean();
+
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(result));
+
+    return res.status(201).json(result);
+  } catch (e) {
+    console.error(e);
+  }
+});
+
+app.get("/products/:id", async (req, res) => {
+  try {
+    const cacheKey = `products:${req.params.id}`;
+    const cached = await redisClient.get(cacheKey);
+
+    if (cached) return res.status(200).json(JSON.parse(cached));
+
+    const result = await Product.find({ _id: req.params.id });
+
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(result));
+
+    res.status(201).json(result);
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
+
+app.post("/products", async (req, res) => {
+  const body = new Product(req.body);
+  try {
+    const newProduct = await body.save();
+    res.status(201).json(newProduct);
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
+
+app.delete("/products/:id", async (req, res) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    res.status(201).json(product);
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+});
+
+app.put("/products", async (req, res) => {
+  const newProduct = {
+    name: req.body.name,
+    description: req.body.description,
+    category: req.body.category,
+    price: req.body.price,
+  };
+  try {
+    const product = await Product.findByIdAndUpdate(req.body.id, newProduct, {
+      new: true,
+    });
+    res.status(201).json(product);
   } catch (e) {
     res.status(400).json({ message: e.message });
   }

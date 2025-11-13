@@ -1,4 +1,4 @@
-import { NgModule } from "@angular/core";
+import { APP_INITIALIZER, NgModule } from "@angular/core";
 import { BrowserModule } from "@angular/platform-browser";
 import { BrowserAnimationsModule } from "@angular/platform-browser/animations";
 import { CommonModule } from "@angular/common";
@@ -8,7 +8,11 @@ import { ReactiveFormsModule } from "@angular/forms";
 import { MatSelectModule } from "@angular/material/select";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
-import { provideHttpClient, withInterceptorsFromDi } from "@angular/common/http";
+import {
+  HTTP_INTERCEPTORS,
+  provideHttpClient,
+  withInterceptorsFromDi,
+} from "@angular/common/http";
 import { MatTableModule } from "@angular/material/table";
 import { MatPaginatorModule } from "@angular/material/paginator";
 import { MatChipsModule } from "@angular/material/chips";
@@ -54,66 +58,94 @@ import { GamesService } from "src/app/services/games.service";
 import { MoviesService } from "src/app/services/movies.service";
 import { provideNativeDateAdapter } from "@angular/material/core";
 import { MAT_DIALOG_DEFAULT_OPTIONS } from "@angular/material/dialog";
+import { ProductsComponent } from "./components/products/products";
+import { ProductsService } from "./services/products.service";
+import { TokenInterceptor } from "./services/token.interceptor";
+import { Observable, tap } from "rxjs";
 
 const mapConfig: YaConfig = {
   apikey: "cd3af09d-12bb-4f94-afc1-66f70598c033",
   lang: "en_US",
 };
 
-@NgModule({ declarations: [
-        AppComponent,
-        TodolistComponent,
-        FooterComponent,
-        HeaderComponent,
-        WeatherComponent,
-        MapComponent,
-        FlightsComponent,
-        LoginComponent,
-        RegistrationComponent,
-        ProfileComponent,
-        EditDialogComponent,
-        EmailSenderComponent,
-        HomeComponent,
-        MusicComponent,
-        GamesComponent,
-        MoviesComponent,
-        ItemDialogComponent,
-    ],
-    bootstrap: [AppComponent], imports: [BrowserModule,
-        BrowserAnimationsModule,
-        AngularYandexMapsModule.forRoot(mapConfig),
-        AppRoutingModule,
-        CommonModule,
-        FormsModule,
-        ReactiveFormsModule,
-        MatFormFieldModule,
-        MatInputModule,
-        MatSelectModule,
-        MatPaginatorModule,
-        MatTableModule,
-        MatChipsModule,
-        MatButtonModule,
-        MatDatepickerModule,
-        MatDividerModule,
-        MatCardModule,
-        MatIconModule,
-        MatToolbarModule,
-        MatTooltipModule,
-        MatDialogModule,
-        MatRadioModule,
-        MatCheckboxModule,
-        MatSlideToggleModule], providers: [
-        TaskService,
-        CityWeatherService,
-        FlightService,
-        UserService,
-        provideNativeDateAdapter(),
-        { provide: MAT_DIALOG_DEFAULT_OPTIONS, useValue: { hasBackdrop: false } },
-        EmailService,
-        HomeService,
-        MusicService,
-        GamesService,
-        MoviesService,
-        provideHttpClient(withInterceptorsFromDi()),
-    ] })
+export function appInitializer(
+  userService: UserService
+): () => Observable<any> {
+  return () =>
+    userService
+      .fetchCurrentUser()
+      .pipe(tap(() => console.log("App initializer ran, user fetched.")));
+}
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    TodolistComponent,
+    FooterComponent,
+    HeaderComponent,
+    WeatherComponent,
+    MapComponent,
+    FlightsComponent,
+    LoginComponent,
+    RegistrationComponent,
+    ProfileComponent,
+    EditDialogComponent,
+    EmailSenderComponent,
+    HomeComponent,
+    MusicComponent,
+    GamesComponent,
+    MoviesComponent,
+    ItemDialogComponent,
+    ProductsComponent,
+  ],
+  bootstrap: [AppComponent],
+  imports: [
+    BrowserModule,
+    BrowserAnimationsModule,
+    AngularYandexMapsModule.forRoot(mapConfig),
+    AppRoutingModule,
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatPaginatorModule,
+    MatTableModule,
+    MatChipsModule,
+    MatButtonModule,
+    MatDatepickerModule,
+    MatDividerModule,
+    MatCardModule,
+    MatIconModule,
+    MatToolbarModule,
+    MatTooltipModule,
+    MatDialogModule,
+    MatRadioModule,
+    MatCheckboxModule,
+    MatSlideToggleModule,
+  ],
+  providers: [
+    TaskService,
+    CityWeatherService,
+    FlightService,
+    UserService,
+    provideNativeDateAdapter(),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: appInitializer,
+      deps: [UserService],
+      multi: true,
+    },
+    { provide: MAT_DIALOG_DEFAULT_OPTIONS, useValue: { hasBackdrop: false } },
+    { provide: HTTP_INTERCEPTORS, useClass: TokenInterceptor, multi: true },
+    EmailService,
+    HomeService,
+    MusicService,
+    GamesService,
+    MoviesService,
+    ProductsService,
+    provideHttpClient(withInterceptorsFromDi()),
+  ],
+})
 export class AppModule {}

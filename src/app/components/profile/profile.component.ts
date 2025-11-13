@@ -58,14 +58,6 @@ export class ProfileComponent implements OnInit {
   }
 
   logout() {
-    this.userService
-      .logoutTempUser(this.user.username, this.user.isAdmin)
-      .subscribe({
-        next: (res) => {
-          alert(res.message);
-          this.router.navigate(["/"]).then(() => window.location.reload());
-        },
-        error: (err) => alert(err.error.message),
-      });
+    this.userService.logout();
   }
 }

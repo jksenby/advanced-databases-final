@@ -14,11 +14,11 @@ export class HeaderComponent implements OnInit {
 
   constructor(private userService: UserService) {}
   ngOnInit(): void {
-    this.userService.getTempUser().subscribe((res) => {
-      if (res[0].loggedIn) {
+    this.userService.currentUser$.subscribe((res) => {
+      if (res) {
         this.signed = {
           icon: "account_box",
-          route: "/profile/" + res[0].username,
+          route: "/profile/" + res.username,
           toolkip: "profile",
         };
       }

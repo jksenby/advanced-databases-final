@@ -31,10 +31,11 @@ export class LoginComponent implements OnInit {
 
   onSubmit() {
     this.userService
-      .putTempUser(this.f.username.value, this.f.password.value)
+      .login(this.f.username.value, this.f.password.value)
       .subscribe({
         next: (res) => {
-          alert(res.message);
+          console.log(res)
+          alert("Logged in successfully");
           this._route.navigate(["/"]).then(() => window.location.reload());
         },
         error: (err) => alert(err.error.message),

@@ -11,6 +11,7 @@ import { HomeComponent } from "./components/home/home.component";
 import { MusicComponent } from "./components/music/music.component";
 import { GamesComponent } from "./components/games/games.component";
 import { MoviesComponent } from "./components/movies/movies.component";
+import { ProductsComponent } from './components/products/products'
 
 export const appRoutes: Routes = [
   { path: "todolist", component: TodolistComponent },
@@ -30,5 +31,6 @@ export const appRoutes: Routes = [
   { path: "music", component: MusicComponent },
   { path: "games", component: GamesComponent },
   { path: "movies", component: MoviesComponent },
+  { path: "products", component: ProductsComponent },
   { path: "**", component: FlightsComponent },
 ];

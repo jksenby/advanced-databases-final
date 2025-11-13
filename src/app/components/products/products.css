@@ -1,0 +1,14 @@
+.products {
+    display: flex;
+    gap: 2.25rem;
+
+    mat-card {
+    width: 25%;
+    }
+
+    mat-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1.25rem;
+    }
+}

@@ -1,5 +1,4 @@
-import mongoose from "mongoose";
-import { Priority } from "../enums/priority";
+import { Priority } from "../enums/priority.enum";
 
 export default interface ITask {
   name: string;

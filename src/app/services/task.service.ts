@@ -1,8 +1,5 @@
 import { Injectable } from "@angular/core";
 import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
-import ITask from "../../shared/models/task.model";
-import { Observable } from "rxjs";
-import mongoose from "mongoose";
 
 @Injectable()
 export class TaskService {

@@ -1,58 +1,99 @@
 import { Injectable } from "@angular/core";
 import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
-import { Observable } from "rxjs";
+import {
+  BehaviorSubject,
+  catchError,
+  Observable,
+  of,
+  switchMap,
+  tap,
+} from "rxjs";
+import { Router } from "@angular/router";
+import { User } from "../../shared/models/user.model";
 
 @Injectable()
 export class UserService {
-  constructor(private http: HttpClient) {}
+  private apiUrl = "http://localhost:3000";
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+
+  // Create a public observable for components to subscribe to
+  public currentUser$ = this.currentUserSubject.asObservable();
+  constructor(private http: HttpClient, private router: Router) {}
 
   options = {
     headers: new HttpHeaders({ "Content-Type": "application/json" }),
   };
 
-  createUser(body): Observable<any> {
-    return this.http.post("http://localhost:3000/users", body, this.options);
+  public get currentUserValue(): User | null {
+    return this.currentUserSubject.value;
   }
 
-  putTempUser(username, password): Observable<any> {
-    return this.http.put<Observable<any>>(
-      "http://localhost:3000/tempUser/65d60450684da12832039223",
-      {
-        username,
-        password,
-      },
-      this.options
-    );
-  }
-
-  logoutTempUser(username, isAdmin): Observable<any> {
-    return this.http.put<Observable<any>>(
-      "http://localhost:3000/logoutTempUser/65d60450684da12832039223",
-      {
-        username,
-        isAdmin,
-      },
-      this.options
-    );
-  }
-
-  updateUser(body) {
-    return this.http.put(
-      "http://localhost:3000/users/" + body.id,
+  createUser(body): Observable<User | any> {
+    return this.http.post<User | any>(
+      `${this.apiUrl}/users`,
       body,
       this.options
     );
   }
 
-  getTempUser() {
-    return this.http.get("http://localhost:3000/tempUser");
+  login(username, password): Observable<any> {
+    return this.http
+      .post<any>(`${this.apiUrl}/login`, { username, password }, this.options)
+      .pipe(
+        tap((response) => {
+          if (response && response.token) {
+            localStorage.setItem("token", response.token);
+            console.log("Token set in localStorage:", response.token);
+          } else {
+            console.error("No token found in login response");
+          }
+        }),
+        switchMap(() => this.fetchCurrentUser())
+      );
   }
 
-  getUser(username) {
-    return this.http.get("http://localhost:3000/users/" + username);
+  logout() {
+    localStorage.removeItem("token");
+    this.currentUserSubject.next(null);
+    this.router.navigate(["/login"]);
   }
 
-  deleteTask(id) {
-    return this.http.delete(`http://localhost:3000/tasks/${id}`, this.options);
+  fetchCurrentUser(): Observable<User | null> {
+    const token = this.getToken();
+    if (!token) {
+      this.currentUserSubject.next(null);
+      return of(null);
+    }
+
+    return this.http.get<User>(`${this.apiUrl}/me`).pipe(
+      tap((user) => {
+        this.currentUserSubject.next(user);
+      }),
+      catchError((error) => {
+        console.error("Failed to fetch user", error);
+        this.logout();
+        return of(null);
+      })
+    );
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem("token");
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.getToken();
+  }
+
+  updateUser(body: User) {
+    return this.http.put(`${this.apiUrl}/users/${body.id}`, body, this.options);
+  }
+
+  getUser(username): Observable<User> {
+    return this.http.get<User>(`${this.apiUrl}/users/${username}`);
+  }
+
+  deleteTask(id: string) {
+    return this.http.delete(`${this.apiUrl}/tasks/${id}`, this.options);
   }
 }

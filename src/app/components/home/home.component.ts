@@ -22,8 +22,8 @@ export class HomeComponent implements OnInit {
   items: any = null;
   onRussian: boolean = false;
   ngOnInit() {
-    this.userService.getTempUser().subscribe((result: any) => {
-      this.isAdmin = result[0].isAdmin;
+    this.userService.currentUser$.subscribe((result: any) => {
+      this.isAdmin = result.isAdmin;
       if (this.isAdmin) {
         this.newItemForm = new FormGroup({
           name: new FormControl(""),
