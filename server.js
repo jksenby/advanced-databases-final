@@ -9,10 +9,30 @@ const redisClient = require("./redis");
 const port = 3000;
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("./authMiddleware");
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost",
+  "http://localhost:4200",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg =
+          "The CORS policy for this site does not allow access from the specified Origin.";
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+  })
+);
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 const url = "mongodb://root:password@db:27017/superapp_db?authSource=admin";
 
@@ -309,10 +329,14 @@ app.post("/login", async (req, res) => {
         isAdmin: user.isAdmin,
       },
     };
-
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "3h" });
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 3 * 60 * 60 * 1000,
+    });
     res.status(200).json({
-      token,
       userId: user._id.toString(),
       username: user.username,
       isAdmin: user.isAdmin,
@@ -322,9 +346,13 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.post("/logout", (req, res) => {
+  res.clearCookie("token");
+  res.status(200).json({ message: "Logged out successfully" });
+});
+
 app.get("/me", authMiddleware, async (req, res) => {
   try {
-    console.log(req.user);
     const user = await User.findById(req.user.id).select("-password");
 
     if (!user) {
@@ -488,7 +516,6 @@ app.get("/interactions/history", authMiddleware, async (req, res) => {
 app.post("/sendEmail", async (req, res) => {
   const { user, pass, to, subject, text, filename, content, service } =
     req.body;
-  console.log(req.body);
   const transporter = nodemailer.createTransport({
     host: "smtp" + service,
     secure: false,

@@ -3,21 +3,15 @@ require("dotenv").config();
 const JWT_SECRET = process.env.JWT_SECRET;
 
 module.exports = function (req, res, next) {
-  const token = req.header("Authorization");
+  const token = req.cookies.token;
+
   if (!token) {
     return res.status(401).json({ message: "No token, authorization denied" });
   }
 
-  if (!token.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Token format is invalid" });
-  }
-
-  const tokenValue = token.split(" ")[1];
-  console.log(tokenValue)
-
   try {
-    const decoded = jwt.verify(tokenValue, JWT_SECRET);
-    
+    const decoded = jwt.verify(token, JWT_SECRET);
+
     req.user = decoded.user;
     next();
   } catch (e) {

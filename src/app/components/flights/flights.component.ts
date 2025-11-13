@@ -74,7 +74,6 @@ export class FlightsComponent {
           this.flightData = data[0];
           this.departure = data[1];
           this.arrival = data[2];
-          console.log(data);
         },
       });
   }
@@ -135,9 +134,6 @@ export class FlightsComponent {
       new Date(year2, month2, day2, hours2, minutes2, seconds2).getTime() -
         new Date(year, month, day, hours, minutes, seconds).getTime()
     );
-  }
-  log() {
-    console.log(this.arrival - this.departure);
   }
   msToHMS(ms) {
     let seconds = ms / 1000;

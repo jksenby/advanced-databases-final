@@ -34,7 +34,6 @@ export class LoginComponent implements OnInit {
       .login(this.f.username.value, this.f.password.value)
       .subscribe({
         next: (res) => {
-          console.log(res)
           alert("Logged in successfully");
           this._route.navigate(["/"]).then(() => window.location.reload());
         },

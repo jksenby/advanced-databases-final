@@ -51,7 +51,6 @@ export class MapComponent implements OnInit {
   }
 
   onMapClick(event) {
-    console.log(event.target);
     const [lat, lon] = event.target._yandexState._model.bounds[1];
     this.cityWeather.getCurrentWeather(lat, lon).subscribe({
       next: (data: any) => (this.cityData = data),

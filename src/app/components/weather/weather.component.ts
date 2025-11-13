@@ -70,11 +70,7 @@ export class WeatherComponent {
       });
   }
   screen = screen;
-  log() {
-    console.log(this.scrollTop);
-    console.log(screen.height);
-  }
-
+  
   getAllPhotos() {
     const urls: string[] = this.cityPhoto.results.map((item) => {
       return `url(${item.urls.full}) `;

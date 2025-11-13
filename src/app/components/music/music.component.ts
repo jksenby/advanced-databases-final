@@ -17,7 +17,6 @@ export class MusicComponent implements OnInit {
   onSubmit() {
     this.loading = true;
     this.musicService.searchFor(this.searchInput).subscribe((result: any) => {
-      console.log(result);
       this.loading = false;
       this.result = result.hits;
     });

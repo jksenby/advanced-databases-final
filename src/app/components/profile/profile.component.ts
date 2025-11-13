@@ -58,6 +58,6 @@ export class ProfileComponent implements OnInit {
   }
 
   logout() {
-    this.userService.logout();
+    this.userService.logout().subscribe(res => console.log(res));
   }
 }

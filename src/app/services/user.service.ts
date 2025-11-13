@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
+import { HttpClient, HttpHeaders } from "@angular/common/http";
 import {
   BehaviorSubject,
   catchError,
@@ -16,12 +16,17 @@ export class UserService {
   private apiUrl = "http://localhost:3000";
   private currentUserSubject = new BehaviorSubject<User | null>(null);
 
-  // Create a public observable for components to subscribe to
   public currentUser$ = this.currentUserSubject.asObservable();
+
   constructor(private http: HttpClient, private router: Router) {}
 
-  options = {
+  private httpOptions = {
     headers: new HttpHeaders({ "Content-Type": "application/json" }),
+    withCredentials: true,
+  };
+
+  private getOptions = {
+    withCredentials: true,
   };
 
   public get currentUserValue(): User | null {
@@ -32,68 +37,77 @@ export class UserService {
     return this.http.post<User | any>(
       `${this.apiUrl}/users`,
       body,
-      this.options
+      { headers: this.httpOptions.headers }
     );
   }
 
   login(username, password): Observable<any> {
     return this.http
-      .post<any>(`${this.apiUrl}/login`, { username, password }, this.options)
+      .post<any>(
+        `${this.apiUrl}/login`,
+        { username, password },
+        {
+          headers: this.httpOptions.headers,
+          withCredentials: true,
+        }
+      )
       .pipe(
         tap((response) => {
-          if (response && response.token) {
-            localStorage.setItem("token", response.token);
-            console.log("Token set in localStorage:", response.token);
-          } else {
-            console.error("No token found in login response");
-          }
+          console.log("Login successful", response);
         }),
         switchMap(() => this.fetchCurrentUser())
       );
   }
 
   logout() {
-    localStorage.removeItem("token");
-    this.currentUserSubject.next(null);
-    this.router.navigate(["/login"]);
-  }
-
-  fetchCurrentUser(): Observable<User | null> {
-    const token = this.getToken();
-    if (!token) {
-      this.currentUserSubject.next(null);
-      return of(null);
-    }
-
-    return this.http.get<User>(`${this.apiUrl}/me`).pipe(
-      tap((user) => {
-        this.currentUserSubject.next(user);
+    return this.http.post(`${this.apiUrl}/logout`, {}, this.getOptions).pipe(
+      tap(() => {
+        this.currentUserSubject.next(null);
+        this.router.navigate(["/login"]).then(() => location.reload());
       }),
-      catchError((error) => {
-        console.error("Failed to fetch user", error);
-        this.logout();
+      catchError((err) => {
+        this.currentUserSubject.next(null);
+        this.router.navigate(["/login"]);
         return of(null);
       })
     );
   }
 
-  getToken(): string | null {
-    return localStorage.getItem("token");
+  fetchCurrentUser(): Observable<User | null> {
+    return this.http.get<User>(`${this.apiUrl}/me`, this.getOptions).pipe(
+      tap((user) => {
+        this.currentUserSubject.next(user);
+      }),
+      catchError((error) => {
+        this.currentUserSubject.next(null);
+        return of(null);
+      })
+    );
   }
 
   isLoggedIn(): boolean {
-    return !!this.getToken();
+    return !!this.currentUserSubject.value;
   }
 
   updateUser(body: User) {
-    return this.http.put(`${this.apiUrl}/users/${body.id}`, body, this.options);
+    return this.http.put(
+      `${this.apiUrl}/users/${body.id}`,
+      body,
+      this.httpOptions
+    );
   }
 
   getUser(username): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/users/${username}`);
+    return this.http.get<User>(
+      `${this.apiUrl}/users/${username}`,
+      this.getOptions
+    );
   }
 
   deleteTask(id: string) {
-    return this.http.delete(`${this.apiUrl}/tasks/${id}`, this.options);
+    return this.http.delete(
+      `${this.apiUrl}/tasks/${id}`,
+      this.getOptions
+    );
   }
 }

@@ -1,6 +1,5 @@
 import { Component, OnInit } from "@angular/core";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
-import { text } from "body-parser";
 import { EmailService } from "src/app/services/email.service";
 import { UserService } from "src/app/services/user.service";
 
