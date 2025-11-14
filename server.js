@@ -8,6 +8,7 @@ const bcrypt = require("bcrypt");
 const redisClient = require("./redis");
 const port = 3000;
 const jwt = require("jsonwebtoken");
+const crypto = require('crypto')
 const authMiddleware = require("./authMiddleware");
 const cookieParser = require("cookie-parser");
 require("dotenv").config();
@@ -58,7 +59,7 @@ const userSchema = mongoose.Schema({
   phone: String,
   isAdmin: Boolean,
   resetPasswordToken: String,
-  resetPasswordExpire: Date,
+  resetPasswordExpires: Date,
 });
 
 const mainPageSchema = mongoose.Schema({
@@ -558,23 +559,23 @@ app.post("/sendEmail", async (req, res) => {
 });
 
 app.post("/forgot-password", async (req, res) => {
-  const { email, user, pass } = req.body;
+  const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    const dbUser = await User.findOne({ email });
 
-    if (!user) {
+    if (!dbUser) {
       return res
         .status(200)
-        .json({ message: "If an account with that email exists, a reset link has been sent." });
+        .json({ message: "Didn't found the user" });
     }
 
     const token = crypto.randomBytes(20).toString("hex");
 
-    user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000;
+    dbUser.resetPasswordToken = token;
+    dbUser.resetPasswordExpires = Date.now() + 3600000;
 
-    await user.save();
+    await dbUser.save();
 
     const transporter = nodemailer.createTransport({
       service: "Gmail",
@@ -584,11 +585,11 @@ app.post("/forgot-password", async (req, res) => {
       },
     });
 
-    const resetUrl = `http://localhost/reset-password/${token}`;
+    const resetUrl = `http://localhost:4200/authorization/reset-password/${token}`;
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: user.email,
+      to: dbUser.email,
       subject: "Password Reset Request",
       text: `You are receiving this email because you (or someone else) have requested the reset of the password for your account.\n\n
              Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it:\n\n
@@ -614,6 +615,8 @@ app.post("/forgot-password", async (req, res) => {
 app.post("/reset-password", async (req, res) => {
   const { token, password } = req.body;
 
+  console.log(`[RESET-PW] Received token: ${token}`);
+
   if (!token || !password) {
     return res.status(400).json({ message: "Token and password are required." });
   }
@@ -625,6 +628,14 @@ app.post("/reset-password", async (req, res) => {
     });
 
     if (!user) {
+      const expiredTokenUser = await User.findOne({ resetPasswordToken: token });
+
+      if (expiredTokenUser) {
+        console.log(`[RESET-PW] Token was found, but it is EXPIRED.`);
+      } else {
+        console.log(`[RESET-PW] Token not found in database.`);
+      }
+
       return res.status(400).json({ message: "Password reset token is invalid or has expired." });
     }
 

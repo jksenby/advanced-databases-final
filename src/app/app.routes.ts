@@ -25,6 +25,8 @@ export const appRoutes: Routes = [
     children: [
       { path: "registration", component: RegistrationComponent },
       { path: "login", component: LoginComponent },
+      { path: 'forgot-password', component: ForgotPasswordComponent },
+      { path: 'reset-password/:token', component: ResetPasswordComponent },
     ],
   },
   { path: "profile/:username", component: ProfileComponent },
@@ -34,7 +36,5 @@ export const appRoutes: Routes = [
   { path: "games", component: GamesComponent },
   { path: "movies", component: MoviesComponent },
   { path: "products", component: ProductsComponent },
-  { path: 'forgot-password', component: ForgotPasswordComponent },
-  { path: 'reset-password/:token', component: ResetPasswordComponent },
   { path: "**", component: FlightsComponent },
 ];
